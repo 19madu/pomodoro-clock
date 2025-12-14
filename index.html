@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
@@ -13,14 +13,17 @@
     color: #e5e7eb;
   }
 
-  /* ===== LOCAL VIDEO BACKGROUND (NO YOUTUBE) ===== */
+  /* ===== VIDEO BACKGROUND ===== */
   .video-bg {
     position: fixed;
     inset: 0;
     z-index: -2;
-    object-fit: cover;
+    overflow: hidden;
+  }
+  .video-bg iframe {
     width: 100vw;
     height: 100vh;
+    pointer-events: none;
   }
 
   .overlay {
@@ -65,10 +68,13 @@
 </head>
 <body>
 
-<!-- LOCAL MINECRAFT AMBIENCE BACKGROUND (NO YT URLS) -->
-<video class="video-bg" autoplay muted loop playsinline>
-  <source src="minecraft-cherry-blossom-pond-ambience-1-hour-minecraft-music-ytshorts.savetube.me.mp4" type="video/mp4">
-</video>
+<!-- Minecraft Cinematic Ambience (No Copyright) -->
+<div class="video-bg">
+  <iframe id="bgVideo"
+    src="https://www.youtube.com/embed/1sSxYk0YJ3U?autoplay=1&mute=1&loop=1&playlist=1sSxYk0YJ3U&controls=0"
+    allow="autoplay">
+  </iframe>
+</div>
 <div class="overlay"></div>
 
 <!-- CLOCK PANEL -->
@@ -95,7 +101,7 @@
   </div>
 </div>
 
-<!-- AMBIENT AUDIO (NO COPYRIGHT) -->
+<!-- Ambient Sound (user interaction required) -->
 <audio id="ambientAudio" loop preload="auto">
   <source src="https://cdn.pixabay.com/audio/2023/03/21/audio_7d6b5c0f62.mp3" type="audio/mpeg">
 </audio>
@@ -170,7 +176,7 @@ function resetTimer() {
   updateDisplay();
 }
 
-/* ===== SOUND (USER-INITIATED) ===== */
+/* ===== SOUND FIX ===== */
 const ambientAudio = document.getElementById('ambientAudio');
 let soundEnabled = false;
 function toggleSound() {
@@ -193,3 +199,4 @@ updateDisplay();
 </script>
 </body>
 </html>
+
