@@ -1,135 +1,195 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>EST Clock & Pomodoro</title>
-  <style>
-    body {
-      font-family: Arial, Helvetica, sans-serif;
-      background: #0f172a;
-      color: #e5e7eb;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      height: 100vh;
-      margin: 0;
-    }
-    .container {
-      background: #020617;
-      padding: 24px 32px;
-      border-radius: 16px;
-      width: 320px;
-      text-align: center;
-      box-shadow: 0 20px 40px rgba(0,0,0,0.5);
-    }
-    h1 {
-      margin: 0 0 12px;
-      font-size: 1.4rem;
-    }
-    .clock {
-      font-size: 1.8rem;
-      font-weight: bold;
-      margin-bottom: 24px;
-    }
-    .timer {
-      font-size: 2.4rem;
-      margin: 16px 0;
-    }
-    button {
-      background: #2563eb;
-      border: none;
-      color: white;
-      padding: 10px 14px;
-      margin: 6px;
-      border-radius: 10px;
-      cursor: pointer;
-      font-size: 0.9rem;
-    }
-    button:hover { opacity: 0.9; }
-    button.secondary { background: #334155; }
-    .mode {
-      font-size: 0.9rem;
-      opacity: 0.8;
-    }
-  </style>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Draggable Pomodoro & Clock</title>
+<style>
+  body {
+    margin: 0;
+    height: 100vh;
+    overflow: hidden;
+    font-family: Arial, Helvetica, sans-serif;
+    color: #e5e7eb;
+  }
+
+  /* ===== LOCAL VIDEO BACKGROUND (NO YOUTUBE) ===== */
+  .video-bg {
+    position: fixed;
+    inset: 0;
+    z-index: -2;
+    object-fit: cover;
+    width: 100vw;
+    height: 100vh;
+  }
+
+  .overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.6);
+    backdrop-filter: blur(6px);
+    z-index: -1;
+  }
+
+  /* ===== DRAGGABLE PANELS ===== */
+  .panel {
+    position: absolute;
+    background: rgba(2,6,23,0.8);
+    padding: 18px 22px;
+    border-radius: 16px;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.6);
+    cursor: grab;
+    user-select: none;
+  }
+  .panel:active { cursor: grabbing; }
+
+  .title { font-size: 1rem; opacity: 0.85; margin-bottom: 6px; }
+  .clock { font-size: 2rem; font-weight: bold; }
+  .timer { font-size: 2.4rem; margin: 8px 0; }
+  .mode { font-size: 0.85rem; opacity: 0.75; }
+
+  button {
+    background: #2563eb;
+    border: none;
+    color: white;
+    padding: 8px 12px;
+    margin: 4px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.8rem;
+  }
+  button.secondary { background: #334155; }
+
+  .controls { margin-top: 8px; }
+</style>
 </head>
 <body>
-  <div class="container">
-    <h1>EST Clock</h1>
-    <div class="clock" id="estClock">--:--:--</div>
 
-    <h1>Pomodoro</h1>
-    <div class="mode" id="mode">Work</div>
-    <div class="timer" id="timer">25:00</div>
+<!-- LOCAL MINECRAFT AMBIENCE BACKGROUND (NO YT URLS) -->
+<video class="video-bg" autoplay muted loop playsinline>
+  <source src="minecraft-cherry-blossom-pond-ambience-1-hour-minecraft-music-ytshorts.savetube.me.mp4" type="video/mp4">
+</video>
+<div class="overlay"></div>
 
-    <div>
-      <button onclick="startTimer()">Start</button>
-      <button class="secondary" onclick="pauseTimer()">Pause</button>
-      <button class="secondary" onclick="resetTimer()">Reset</button>
-    </div>
+<!-- CLOCK PANEL -->
+<div class="panel" id="clockPanel" style="top:40px; left:40px;">
+  <div class="title">EST Clock</div>
+  <div class="clock" id="estClock">--:--:--</div>
+</div>
+
+<!-- POMODORO PANEL -->
+<div class="panel" id="pomodoroPanel" style="top:40px; right:40px;">
+  <div class="title">Pomodoro</div>
+  <div class="mode" id="mode">Work</div>
+  <div class="timer" id="timer">25:00</div>
+
+  <div class="controls">
+    <button onclick="startTimer()">Start</button>
+    <button class="secondary" onclick="pauseTimer()">Pause</button>
+    <button class="secondary" onclick="resetTimer()">Reset</button>
   </div>
 
-  <script>
-    /* ===== EST CLOCK (handles daylight savings automatically) ===== */
-    function updateESTClock() {
-      const now = new Date();
-      const options = {
-        timeZone: 'America/New_York',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit'
-      };
-      document.getElementById('estClock').textContent = now.toLocaleTimeString('en-US', options);
+  <div class="controls">
+    <button class="secondary" onclick="toggleSound()">Sound</button>
+    <button class="secondary" onclick="toggleFullscreen()">Fullscreen</button>
+  </div>
+</div>
+
+<!-- AMBIENT AUDIO (NO COPYRIGHT) -->
+<audio id="ambientAudio" loop preload="auto">
+  <source src="https://cdn.pixabay.com/audio/2023/03/21/audio_7d6b5c0f62.mp3" type="audio/mpeg">
+</audio>
+
+<script>
+/* ===== DRAG FUNCTION ===== */
+function makeDraggable(el) {
+  let offsetX = 0, offsetY = 0, dragging = false;
+
+  el.addEventListener('mousedown', e => {
+    dragging = true;
+    offsetX = e.clientX - el.offsetLeft;
+    offsetY = e.clientY - el.offsetTop;
+  });
+
+  document.addEventListener('mousemove', e => {
+    if (!dragging) return;
+    el.style.left = e.clientX - offsetX + 'px';
+    el.style.top = e.clientY - offsetY + 'px';
+  });
+
+  document.addEventListener('mouseup', () => dragging = false);
+}
+
+makeDraggable(clockPanel);
+makeDraggable(pomodoroPanel);
+
+/* ===== EST CLOCK ===== */
+function updateESTClock() {
+  estClock.textContent = new Date().toLocaleTimeString('en-US', { timeZone: 'America/New_York' });
+}
+setInterval(updateESTClock, 1000);
+updateESTClock();
+
+/* ===== POMODORO ===== */
+const WORK_TIME = 25 * 60;
+const BREAK_TIME = 5 * 60;
+let timeLeft = WORK_TIME;
+let isRunning = false;
+let isWorkMode = true;
+let intervalId;
+
+function updateDisplay() {
+  const m = Math.floor(timeLeft / 60);
+  const s = timeLeft % 60;
+  timer.textContent = `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+  mode.textContent = isWorkMode ? 'Work' : 'Break';
+}
+
+function startTimer() {
+  if (isRunning) return;
+  isRunning = true;
+  intervalId = setInterval(() => {
+    if (timeLeft > 0) timeLeft--;
+    else {
+      isWorkMode = !isWorkMode;
+      timeLeft = isWorkMode ? WORK_TIME : BREAK_TIME;
     }
-    setInterval(updateESTClock, 1000);
-    updateESTClock();
-
-    /* ===== POMODORO TIMER ===== */
-    const WORK_TIME = 25 * 60;
-    const BREAK_TIME = 5 * 60;
-
-    let timeLeft = WORK_TIME;
-    let isRunning = false;
-    let isWorkMode = true;
-    let intervalId = null;
-
-    function updateDisplay() {
-      const minutes = Math.floor(timeLeft / 60);
-      const seconds = timeLeft % 60;
-      document.getElementById('timer').textContent =
-        String(minutes).padStart(2, '0') + ':' + String(seconds).padStart(2, '0');
-      document.getElementById('mode').textContent = isWorkMode ? 'Work' : 'Break';
-    }
-
-    function startTimer() {
-      if (isRunning) return;
-      isRunning = true;
-      intervalId = setInterval(() => {
-        if (timeLeft > 0) {
-          timeLeft--;
-          updateDisplay();
-        } else {
-          isWorkMode = !isWorkMode;
-          timeLeft = isWorkMode ? WORK_TIME : BREAK_TIME;
-          updateDisplay();
-        }
-      }, 1000);
-    }
-
-    function pauseTimer() {
-      isRunning = false;
-      clearInterval(intervalId);
-    }
-
-    function resetTimer() {
-      pauseTimer();
-      isWorkMode = true;
-      timeLeft = WORK_TIME;
-      updateDisplay();
-    }
-
     updateDisplay();
-  </script>
+  }, 1000);
+}
+
+function pauseTimer() {
+  isRunning = false;
+  clearInterval(intervalId);
+}
+
+function resetTimer() {
+  pauseTimer();
+  isWorkMode = true;
+  timeLeft = WORK_TIME;
+  updateDisplay();
+}
+
+/* ===== SOUND (USER-INITIATED) ===== */
+const ambientAudio = document.getElementById('ambientAudio');
+let soundEnabled = false;
+function toggleSound() {
+  if (!soundEnabled) {
+    ambientAudio.volume = 0.6;
+    ambientAudio.play();
+  } else {
+    ambientAudio.pause();
+  }
+  soundEnabled = !soundEnabled;
+}
+
+/* ===== FULLSCREEN ===== */
+function toggleFullscreen() {
+  if (!document.fullscreenElement) document.documentElement.requestFullscreen();
+  else document.exitFullscreen();
+}
+
+updateDisplay();
+</script>
 </body>
 </html>
